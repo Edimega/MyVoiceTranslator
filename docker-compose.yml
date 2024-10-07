@@ -1,0 +1,6 @@
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+    command: python3 main.py
