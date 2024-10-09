@@ -34,20 +34,19 @@ def translateVoice(input_lang, output_lang, audio):
     try:
         tts = gTTS(secondTranscription, lang=output_lang)
         output_dir = 'data'
-        # geberar un id unico para agregar al nombre del archivo de audio
+        # generate a unique id to add to the audio file name
         audioId = str(uuid.uuid4())
         output_path = os.path.join(output_dir, f'output_audio_{audioId}_.mp3')
-        
-        # Verificar si el directorio existe, si no, crearlo
+
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
-        
+
         tts.save(output_path)
         return output_path
     except Exception as e:
         raise gradio.Error('Error al devolver el audio: ', str(e))
 
-# Crear la interfaz de usuario
+# Create the user interface
 view = gradio.Interface(
     fn=translateVoice,
     inputs=[
@@ -62,10 +61,10 @@ view = gradio.Interface(
     description='This is a simple voice translator',
 )
 
-# Correr la interfaz de usuario
+# Running the user interface
 view.launch(server_name="0.0.0.0", server_port=80)
 
-# Funcion para borar las carpetas
+# Function to delete folders
 def deleteFolder():
     try:
         os.system('rm -rf data')
@@ -73,7 +72,7 @@ def deleteFolder():
     except Exception as e:
         print('Error al borrar la carpeta data: ', str(e))
 
-# temporizador para Borrar la carpeta data cada hora
+# timer to delete the data folder every hour
 timer = threading.Event()
 while not timer.wait(3600):
     deleteFolder()
