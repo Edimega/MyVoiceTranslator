@@ -1,78 +1,52 @@
-import uuid
 import gradio as gradio # type: ignore
-import whisper # type: ignore
-from translate import Translator # type: ignore
-from gtts import gTTS # type: ignore
-import os
 import threading
+from functions import translateVoice, voiceToText, textToVoice, deleteFolder
 
-
-def translateVoice(input_lang, output_lang, audio):
-    if not input_lang or not output_lang:
-        raise gradio.Error('Los campos de idioma de entrada y salida no pueden estar vacíos')
-    if input_lang == output_lang:
-        raise gradio.Error('El idioma de entrada y salida deben ser diferentes')
-
-
-    # Translate voice to text
-    try:
-        model = whisper.load_model('base')
-        res = model.transcribe(audio, language='spanish', fp16=False)
-        firstTranscription = res['text']
-    except Exception as e:
-        raise gradio.Error('Error al transcribir a texto: ', str(e))
-
-
-    # Translate text to english
-    try:
-        secondTranscription = Translator(from_lang=input_lang, to_lang=output_lang).translate(firstTranscription)
-    except Exception as e:
-        raise gradio.Error('Error al traducir a inglés: ', str(e))
-
-
-    # Translate text to voice in english and save in a folder data
-    try:
-        tts = gTTS(secondTranscription, lang=output_lang)
-        output_dir = 'data'
-        # generate a unique id to add to the audio file name
-        audioId = str(uuid.uuid4())
-        output_path = os.path.join(output_dir, f'output_audio_{audioId}_.mp3')
-
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        tts.save(output_path)
-        return output_path
-    except Exception as e:
-        raise gradio.Error('Error al devolver el audio: ', str(e))
-
-# Create the user interface
-view = gradio.Interface(
+# Crear interfaces de Gradio para cada función
+translate_voice_interface = gradio.Interface(
     fn=translateVoice,
     inputs=[
         gradio.Dropdown(choices=['en', 'es', 'fr', 'de'], label='Idioma de entrada', value='es'),
         gradio.Dropdown(choices=['en', 'es', 'fr', 'de'], label='Idioma de salida', value='en'),
         gradio.Audio(sources=['microphone', 'upload'], type='filepath', label='Audio a traducir')
     ],
-    outputs=[
-        gradio.Audio()
-        ],
-    title='Traslate Voice',
-    description='This is a simple voice translator',
+    outputs=gradio.Audio(),
+    title='Traducir Voz a Voz',
+    description='Esta es una simple traducción de voz a voz',
 )
 
-# Running the user interface
-view.launch(server_name="0.0.0.0", server_port=80)
+voice_to_text_interface = gradio.Interface(
+    fn=voiceToText,
+    inputs=[
+        gradio.Audio(sources=['microphone', 'upload'], type='filepath', label='Audio a texto'),
+        gradio.Dropdown(choices=['en', 'es', 'fr', 'de'], label='Idioma de entrada', value='es')
+    ],
+    outputs=gradio.Textbox(),
+    title='Voz a Texto',
+    description='Esta es una simple conversión de voz a texto',
+)
 
-# Function to delete folders
-def deleteFolder():
-    try:
-        os.system('rm -rf data')
-        os.system('rm -rf flagged')
-    except Exception as e:
-        print('Error al borrar la carpeta data: ', str(e))
+text_to_voice_interface = gradio.Interface(
+    fn=textToVoice,
+    inputs=[
+        gradio.Dropdown(choices=['en', 'es', 'fr', 'de'], label='Idioma', value='en'),
+        gradio.Textbox(label='Texto a convertir')
+    ],
+    outputs=gradio.Audio(),
+    title='Texto a Voz',
+    description='Esta es una simple conversión de texto a voz',
+)
 
-# timer to delete the data folder every hour
+# Crear una interfaz de pestañas de Gradio
+tabbed_interface = gradio.TabbedInterface(
+    [translate_voice_interface, voice_to_text_interface, text_to_voice_interface],
+    tab_names=['Traducir Voz a Voz', 'Voz a Texto', 'Texto a Voz']
+)
+
+# Lanzar la interfaz de pestañas
+tabbed_interface.launch(server_name="0.0.0.0", server_port=80)
+
+# Temporizador para borrar la carpeta de datos cada hora
 timer = threading.Event()
 while not timer.wait(3600):
     deleteFolder()
